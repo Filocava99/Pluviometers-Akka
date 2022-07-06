@@ -22,8 +22,14 @@ object Zone{
     trait Command
     case class RegisterDevice(deviceId: String) extends Command
     case class RegistrationResponse(deviceId: String, success: Boolean)
+    case class GetDevices(ref: ActorRef[ZoneCommand]) extends Command
+    case class GetDevicesResponse(devices: Seq[ActorRef[DeviceCommand]]) extends Command
+    case class GetAlarmStatus(ref: ActorRef[ZoneCommand]) extends Command
+    case class GetAlarmStatusResponse(alarmStatus: Boolean) extends Command
     case class WrappedDeviceCommand(command: Device.Command) extends Command
     case class WrappedFireStationCommand(command: FireStation.Command) extends Command
+    case class GetFireStationAdapter(ref: ActorRef[ZoneCommand]) extends Command
+    case class GetFireStationAdapterResponse(ref: ActorRef[FireStationCommand]) extends Command
     type ZoneCommand = Zone.Command
 }
 
@@ -36,7 +42,7 @@ class Zone(context: ActorContext[ZoneCommand], val coordinate: Coordinate, size:
     val devices: mutable.Map[String, ActorRef[DeviceCommand]] = mutable.Map[String, ActorRef[DeviceCommand]]()
     val alarmedDevices: mutable.Set[String] = scala.collection.mutable.Set[String]()
     val fireStation: ActorRef[FireStationCommand] = context.spawn(FireStation(fireStationAdapter), s"fireStation-${coordinate.x}-${coordinate.y}")
-
+    var inAlarm: Boolean = false
     context.self ! WrappedDeviceCommand(Device.NotifyAlarm("test"))
 
     var cancellableTimer: Option[Cancellable] = None
@@ -44,19 +50,29 @@ class Zone(context: ActorContext[ZoneCommand], val coordinate: Coordinate, size:
     def onMessage(msg: ZoneCommand): Behavior[ZoneCommand] = {
         msg match {
             case Zone.RegisterDevice(deviceId) =>
-                println(s"Registering device $deviceId")
+                context.log.info(s"Registering device $deviceId")
                 val deviceRef = context.spawn(Device(deviceId, coordinate, deviceAdapter), deviceId)
                 devices.put(deviceId, deviceRef)
+                this
+            case Zone.GetDevices(ref) =>
+                ref ! Zone.GetDevicesResponse(devices.values.toSeq)
+                this
+            case Zone.GetAlarmStatus(ref) =>
+                ref ! Zone.GetAlarmStatusResponse(inAlarm)
+                this
+            case Zone.GetFireStationAdapter(ref) =>
+                ref ! Zone.GetFireStationAdapterResponse(fireStationAdapter)
                 this
             case Zone.WrappedDeviceCommand(command) =>
                 command match
                     case Device.NotifyAlarm(deviceId) =>
-                        println(s"${deviceId} notified alarm")
+                        context.log.info(s"${deviceId} notified alarm")
                         alarmedDevices.add(deviceId)
                         if(alarmedDevices.size >= (devices.size/2)) {
-                            println("The majority of devices notified alarm")
+                            context.log.info("The majority of devices notified alarm")
+                            inAlarm = true
                             cancellableTimer = Some(context.system.scheduler.scheduleWithFixedDelay(FiniteDuration(1, SECONDS), FiniteDuration(1, SECONDS))(() =>{
-                                println("Sending notification to fire station")
+                                context.log.info("Sending notification to fire station")
                                 fireStation ! FireStation.NotifyAlarm()
                             })(scala.concurrent.ExecutionContext.global))
                         }
@@ -72,16 +88,17 @@ class Zone(context: ActorContext[ZoneCommand], val coordinate: Coordinate, size:
             case Zone.WrappedFireStationCommand(command) =>
                 command match
                     case FireStation.AlarmHandled() =>
-                        println("Fire station notified alarm")
-                        devices.values.foreach(device => device ! Device.NotifyAlarm("fire station"))
+                        inAlarm = false
+                        context.log.info("Fire station notified alarm")
+                        devices.values.foreach(device => device ! Device.DisableAlarm())
                         return this
                     case FireStation.NotificationReceived() =>
-                        println("Fire station notified notification")
+                        context.log.info("Fire station notified notification")
                         cancellableTimer.foreach(c => c.cancel())
                         return this
                 this
             case _ =>
-                println(s"Zone ${coordinate} received unknown message: $msg")
+                context.log.info(s"Zone ${coordinate} received unknown message: $msg")
                 this
         }
     }

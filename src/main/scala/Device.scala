@@ -13,7 +13,7 @@ object Device{
     }
 
     trait Command
-    case class TriggerAlarm(deviceId: String) extends Command
+    case class TriggerAlarm() extends Command
     case class DisableAlarm() extends Command
     case class NotifyAlarm(deviceId: String) extends Command
     case class NotifyRestart(deviceId: String, ref: ActorRef[DeviceCommand]) extends Command
@@ -28,14 +28,14 @@ class Device(context: ActorContext[DeviceCommand], val deviceId: String, val coo
     
     override def onMessage(msg: DeviceCommand): Behavior[DeviceCommand] = {
         msg match {
-            case Device.TriggerAlarm(deviceId) =>
+            case Device.TriggerAlarm() =>
                 alarmEnabled = true
-                println(s"Device $deviceId triggered alarm")
+                context.log.info(s"Device $deviceId triggered alarm")
                 zone ! Device.NotifyAlarm(deviceId)
                 return this
             case Device.DisableAlarm() =>
                 alarmEnabled = false
-                println(s"Device $deviceId disabled alarm")
+                context.log.info(s"Device $deviceId disabled alarm")
                 return this
         }
         this
@@ -45,11 +45,11 @@ class Device(context: ActorContext[DeviceCommand], val deviceId: String, val coo
         signal => {
             signal match
                 case PreRestart =>
-                    println(s"Device $deviceId restarted")
+                    context.log.info(s"Device $deviceId restarted")
                     zone ! Device.NotifyRestart(deviceId, context.self)
                     this
                 case PostStop =>
-                    println(s"Device $deviceId stopped")
+                    context.log.info(s"Device $deviceId stopped")
                     zone ! Device.NotifyStop(deviceId)
                     this
                 case _ => super.onSignal(signal)
