@@ -45,10 +45,10 @@ class SmartCityTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
         case _ => fail("Unexpected response")
 
     "A zone" must {
-        "have at least 1 device" in {
+        "must have at least 1 device" in {
             devices.size should be >= 1
         }
-        "have the alarm status set to true" when {
+        "have the alarm status set to true when" when {
             "the majority of devices triggered the alarm" in {
                 devices.foreach(device => device ! Device.TriggerAlarm())
                 firstZone ! Zone.GetAlarmStatus(zoneProbe.ref)
@@ -66,7 +66,7 @@ class SmartCityTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
                     case _ => fail("Unexpected response")
             }
         }
-        "have the alarm status set to false" when {
+        "have the alarm status set to false when" when {
             "the fire station has disabled the alarm" in {
                 firstZone ! Zone.GetFireStationAdapter(zoneProbe.ref)
                 zoneProbe.receiveMessage() match
