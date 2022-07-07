@@ -1,4 +1,5 @@
 package it.filippocavallari
+package actor
 
 import Device.DeviceCommand
 import Zone.ZoneCommand

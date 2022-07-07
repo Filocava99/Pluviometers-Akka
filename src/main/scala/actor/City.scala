@@ -1,10 +1,13 @@
 package it.filippocavallari
+package actor
 
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import City.{CityCommand, GetZones, GetZonesResponse, Start}
 import Zone.ZoneCommand
+import it.filippocavallari.actor.{City, Zone}
 
+import scala.collection.immutable.HashMap
 import scala.collection.mutable
 
 object City {
@@ -16,16 +19,16 @@ object City {
 
     trait Command
     case class GetZones(ref: ActorRef[CityCommand]) extends Command
-    case class GetZonesResponse(seq: Seq[ActorRef[ZoneCommand]]) extends Command
+    case class GetZonesResponse(map: Map[String, ActorRef[ZoneCommand]]) extends Command
     case class Start() extends Command
     type CityCommand = City.Command
 }
 
 class City(context: ActorContext[CityCommand], size: Size, nDevices: Int) extends AbstractBehavior[CityCommand](context) {
 
-    val zonesSet: mutable.Set[ActorRef[ZoneCommand]] = mutable.Set[ActorRef[ZoneCommand]]()
+    var zonesMap: mutable.Map[String, ActorRef[ZoneCommand]] = mutable.HashMap[String, ActorRef[ZoneCommand]]()
 
-    def init(): Set[ActorRef[ZoneCommand]] = {
+    def init(): Unit = {
         val nZones = City.MAX_ZONES min nDevices
         val nRows = Math.floor(Math.sqrt(nZones)).toInt
         var totalColumns = 0
@@ -38,25 +41,25 @@ class City(context: ActorContext[CityCommand], size: Size, nDevices: Int) extend
             }
             totalColumns += nCols
             for (j <- 0 until nCols) {
+                val zoneId: String = s"zone-$i-$j"
                 val zoneSize = Size(size.width / nCols, size.height / nRows)
                 val zoneCoordinate = Coordinate(size.width / nCols * j, size.height / nRows * i)
-                val zone = context.spawn(Zone(zoneCoordinate, zoneSize), s"zone-$i-$j")
+                val zone = context.spawn(Zone(zoneId, zoneCoordinate, zoneSize), s"zone-$i-$j")
                 for (k <- 0 until nDevices / nZones) {
                     zone ! Zone.RegisterDevice(s"device-$totalDevices") //TODO fix exceeding number of devices
                     totalDevices += 1
                 }
-                zonesSet += zone
+                zonesMap = zonesMap.+((zoneId, zone))
                 context.log.info("zone-{}-{}: {} {} {} {}", i, j, zoneCoordinate.x, zoneCoordinate.y, zoneSize.width, zoneSize.height)
             }
         }
-        collection.immutable.Set(zonesSet.toSeq: _*)
     }
 
     init()
 
     def onMessage(msg: CityCommand): Behavior[CityCommand] = {
         msg match
-            case GetZones(ref) => ref ! GetZonesResponse(zonesSet.toSeq)
+            case GetZones(ref) => ref ! GetZonesResponse(zonesMap.map(kv => (kv._1,kv._2)).toMap)
         this
     }
 

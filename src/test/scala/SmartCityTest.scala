@@ -2,6 +2,7 @@ package it.filippocavallari
 
 import akka.actor.testkit.typed.scaladsl.{ActorTestKit, ScalaTestWithActorTestKit, TestProbe}
 import akka.actor.typed.ActorRef
+import it.filippocavallari.actor._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.{AnyWordSpec, AnyWordSpecLike}
@@ -10,10 +11,10 @@ import scala.concurrent.duration.{FiniteDuration, HOURS}
 
 class SmartCityTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
 
-    import Device._
-    import City._
-    import FireStation._
-    import Zone._
+    import actor.Device._
+    import actor.City._
+    import actor.FireStation._
+    import actor.Zone._
 
     val MAX_ZONES = 10
     val N_DEVICES = 10
@@ -26,23 +27,16 @@ class SmartCityTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
     var zones: Seq[ActorRef[ZoneCommand]] = Seq.empty
     cityResponse match
         case City.GetZonesResponse(receivedZones) =>
-            zones = receivedZones
+            zones = receivedZones.values.toSeq
 
     val zoneProbe: TestProbe[ZoneCommand] = createTestProbe[ZoneCommand]()
     val firstZone: ActorRef[ZoneCommand] = zones.head
-    firstZone ! GetDevices(zoneProbe.ref)
+    firstZone ! GetInfo(zoneProbe.ref)
     var zoneResponse: ZoneCommand = zoneProbe.receiveMessage(FiniteDuration(1, HOURS))
     var devices: Seq[ActorRef[DeviceCommand]] = Seq.empty
     zoneResponse match
-        case Zone.GetDevicesResponse(receivedDevices) =>
+        case Zone.GetInfoResponse(zoneId, inAlarm, receivedDevices) =>
             devices = receivedDevices
-    //    devices.size should be >= 1
-    devices.foreach(device => device ! Device.TriggerAlarm())
-    firstZone ! Zone.GetAlarmStatus(zoneProbe.ref)
-    zoneProbe.receiveMessage(FiniteDuration(1, HOURS)) match
-        case Zone.GetAlarmStatusResponse(alarmStatus) =>
-            alarmStatus should be(true)
-        case _ => fail("Unexpected response")
 
     "A zone" must {
         "must have at least 1 device" in {
@@ -51,18 +45,22 @@ class SmartCityTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
         "have the alarm status set to true when" when {
             "the majority of devices triggered the alarm" in {
                 devices.foreach(device => device ! Device.TriggerAlarm())
-                firstZone ! Zone.GetAlarmStatus(zoneProbe.ref)
-                zoneProbe.receiveMessage(FiniteDuration(1, HOURS)) match
-                    case Zone.GetAlarmStatusResponse(alarmStatus) =>
-                        alarmStatus should be(true)
-                    case _ => fail("Unexpected response")
+                var alarm = AlarmStatus.ALARM_OFF
+                while(alarm == AlarmStatus.ALARM_OFF){ //busy waiting because the messages are asynchronous
+                    firstZone ! Zone.GetAlarmStatus(zoneProbe.ref)
+                    zoneProbe.receiveMessage(FiniteDuration(1, HOURS)) match
+                        case Zone.GetAlarmStatusResponse(alarmStatus) =>
+                            alarm = alarmStatus
+                        case _ => fail("Unexpected response")
+                }
+                alarm should be(AlarmStatus.ALARM_UNDER_MANAGEMENT)
             }
             "the alarm has not been disabled by the fire station even if the devices are not in alarm" in {
                 devices.foreach(device => device ! Device.DisableAlarm())
                 firstZone ! Zone.GetAlarmStatus(zoneProbe.ref)
                 zoneProbe.receiveMessage(FiniteDuration(1, HOURS)) match
                     case Zone.GetAlarmStatusResponse(alarmStatus) =>
-                        alarmStatus should be(true)
+                        alarmStatus should be(AlarmStatus.ALARM_OFF)
                     case _ => fail("Unexpected response")
             }
         }
@@ -75,7 +73,7 @@ class SmartCityTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
                         firstZone ! Zone.GetAlarmStatus(zoneProbe.ref)
                         zoneProbe.receiveMessage(FiniteDuration(1, HOURS)) match
                             case Zone.GetAlarmStatusResponse(alarmStatus) =>
-                                alarmStatus should be(false)
+                                alarmStatus should be(AlarmStatus.ALARM_OFF)
                             case _ => fail("Unexpected response")
             }
         }
