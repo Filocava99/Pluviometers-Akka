@@ -1,5 +1,4 @@
-package it.filippocavallari
-package actor
+package it.filippocavallari.actor
 
 import FireStation.{AlarmHandled, FireStationCommand, NotifyAlarm}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}

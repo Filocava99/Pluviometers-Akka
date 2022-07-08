@@ -1,13 +1,12 @@
-package it.filippocavallari
-package actor
+package it.filippocavallari.actor
 
 import akka.actor.typed.{ActorRef, Behavior, Scheduler}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import Device.DeviceCommand
 import FireStation.FireStationCommand
 import Zone.{WrappedDeviceCommand, WrappedFireStationCommand, ZoneCommand}
-
 import akka.actor.Cancellable
+import it.filippocavallari.{Coordinate, PortCounter, Size, startupWithRole}
 
 import concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
@@ -47,7 +46,7 @@ class Zone(context: ActorContext[ZoneCommand], val zoneId: String, val coordinat
 
     val devices: mutable.Map[String, ActorRef[DeviceCommand]] = mutable.Map[String, ActorRef[DeviceCommand]]()
     val alarmedDevices: mutable.Set[String] = scala.collection.mutable.Set[String]()
-    val fireStation: ActorRef[FireStationCommand] = context.spawn(FireStation(fireStationAdapter), s"fireStation-${coordinate.x}-${coordinate.y}")
+    val fireStation: ActorRef[FireStationCommand] = startupWithRole(s"fireStation-${coordinate.x}-${coordinate.y}",PortCounter.nextPort())(FireStation(fireStationAdapter))
     var inAlarm: Zone.AlarmStatus = Zone.AlarmStatus.ALARM_OFF
 
     var cancellableTimer: Option[Cancellable] = None
@@ -55,7 +54,7 @@ class Zone(context: ActorContext[ZoneCommand], val zoneId: String, val coordinat
         msg match {
             case Zone.RegisterDevice(deviceId) =>
                 context.log.info(s"Registering device $deviceId")
-                val deviceRef = context.spawn(Device(deviceId, coordinate, deviceAdapter), deviceId)
+                val deviceRef = startupWithRole(deviceId, PortCounter.nextPort())(Device(deviceId, coordinate, deviceAdapter))
                 devices.put(deviceId, deviceRef)
                 this
             case Zone.GetInfo(ref) =>

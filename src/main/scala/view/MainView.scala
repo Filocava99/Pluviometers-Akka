@@ -1,5 +1,4 @@
-package it.filippocavallari
-package view
+package it.filippocavallari.view
 
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior, SpawnProtocol}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
@@ -10,6 +9,7 @@ import it.filippocavallari.view.MainView.ZoneCommandWrapper
 import it.filippocavallari.actor.Zone.*
 import it.filippocavallari.actor.Device.DeviceCommand
 import it.filippocavallari.actor.FireStation.FireStationCommand
+import it.filippocavallari.{PortCounter, Size, startupWithRole}
 
 import java.awt.event.ActionListener
 import java.awt.{GridLayout, LayoutManager}
@@ -102,13 +102,10 @@ class MainView(context: ActorContext[CityCommand], val smartCity: ActorRef[CityC
 }
 
 @main def main(): Unit ={
-
-   // val system = ActorSystem[CityCommand](City(Size(200,100), 10), "city")
-    val system : ActorSystem[Unit] = ActorSystem(Behaviors.setup(ctx => {
-        val city = ctx.spawn(City(Size(200,100), 20), "city")
-        val mainFrame = ctx.spawn(MainView(city), "mainView")
+    startupWithRole("system", PortCounter.nextPort())(Behaviors.setup(ctx => {
+        val city = startupWithRole("city", PortCounter.nextPort())(City(Size(200,100), 20))
+        startupWithRole("gui",PortCounter.nextPort())(MainView(city))
         Behaviors.receiveMessage(msg => msg match
             case "stop" => Behaviors.stopped
-        )
-    }), "smart-city")
+        )}))
 }

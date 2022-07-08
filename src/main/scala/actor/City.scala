@@ -1,10 +1,10 @@
-package it.filippocavallari
-package actor
+package it.filippocavallari.actor
 
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import City.{CityCommand, GetZones, GetZonesResponse, Start}
 import Zone.ZoneCommand
+import it.filippocavallari.{Coordinate, PortCounter, Size, startupWithRole}
 import it.filippocavallari.actor.{City, Zone}
 
 import scala.collection.immutable.HashMap
@@ -44,7 +44,7 @@ class City(context: ActorContext[CityCommand], size: Size, nDevices: Int) extend
                 val zoneId: String = s"zone-$i-$j"
                 val zoneSize = Size(size.width / nCols, size.height / nRows)
                 val zoneCoordinate = Coordinate(size.width / nCols * j, size.height / nRows * i)
-                val zone = context.spawn(Zone(zoneId, zoneCoordinate, zoneSize), s"zone-$i-$j")
+                val zone = startupWithRole("zone", PortCounter.nextPort())(Zone(zoneId, zoneCoordinate, zoneSize))
                 for (k <- 0 until nDevices / nZones) {
                     zone ! Zone.RegisterDevice(s"device-$totalDevices") //TODO fix exceeding number of devices
                     totalDevices += 1

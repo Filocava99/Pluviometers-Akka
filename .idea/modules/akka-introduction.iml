@@ -8,11 +8,20 @@
       <sourceFolder url="file://$MODULE_DIR$/../../src/main/scala" isTestSource="false" packagePrefix="it.filippocavallari" />
       <sourceFolder url="file://$MODULE_DIR$/../../src/test/scala" isTestSource="true" packagePrefix="it.filippocavallari" />
       <sourceFolder url="file://$MODULE_DIR$/../../src/test/resources" type="java-test-resource" />
+      <sourceFolder url="file://$MODULE_DIR$/../../src/main/resources" type="java-resource" />
       <excludeFolder url="file://$MODULE_DIR$/../../target" />
       <excludeFolder url="file://$MODULE_DIR$/../../project/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="sbt: com.fasterxml.jackson.core:jackson-annotations:2.13.2:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.fasterxml.jackson.core:jackson-core:2.13.2:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.fasterxml.jackson.core:jackson-databind:2.13.2:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.13.2:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.13.2:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.13.2:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.fasterxml.jackson.module:jackson-module-parameter-names:2.13.2:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.fasterxml.jackson.module:jackson-module-scala_3:2.13.2:jar" level="project" />
     <orderEntry type="library" name="sbt: com.github.jnr:jffi:1.2.18:jar" level="project" />
     <orderEntry type="library" name="sbt: com.github.jnr:jffi:1.2.18:native:jar" level="project" />
     <orderEntry type="library" name="sbt: com.github.jnr:jnr-a64asm:1.0.0:jar" level="project" />
@@ -20,6 +29,7 @@
     <orderEntry type="library" name="sbt: com.github.jnr:jnr-ffi:2.1.9:jar" level="project" />
     <orderEntry type="library" name="sbt: com.github.jnr:jnr-x86asm:1.0.2:jar" level="project" />
     <orderEntry type="library" name="sbt: com.hierynomus:asn-one:0.5.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.thoughtworks.paranamer:paranamer:2.8:jar" level="project" />
     <orderEntry type="library" scope="TEST" name="sbt: com.typesafe.akka:akka-actor-testkit-typed_3:2.6.19:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe.akka:akka-actor-typed_3:2.6.19:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe.akka:akka-actor_3:2.6.19:jar" level="project" />
@@ -31,6 +41,7 @@
     <orderEntry type="library" name="sbt: com.typesafe.akka:akka-pki_3:2.6.19:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe.akka:akka-protobuf-v3_3:2.6.19:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe.akka:akka-remote_3:2.6.19:jar" level="project" />
+    <orderEntry type="library" name="sbt: com.typesafe.akka:akka-serialization-jackson_3:2.6.19:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe.akka:akka-slf4j_3:2.6.19:jar" level="project" />
     <orderEntry type="library" name="sbt: com.typesafe.akka:akka-stream_3:2.6.19:jar" level="project" />
     <orderEntry type="library" scope="TEST" name="sbt: com.typesafe.akka:akka-testkit_3:2.6.19:jar" level="project" />
@@ -38,6 +49,7 @@
     <orderEntry type="library" name="sbt: com.typesafe:ssl-config-core_2.13:0.4.3:jar" level="project" />
     <orderEntry type="library" name="sbt: org.agrona:agrona:1.14.0:jar" level="project" />
     <orderEntry type="library" name="sbt: org.lmdbjava:lmdbjava:0.7.0:jar" level="project" />
+    <orderEntry type="library" name="sbt: org.lz4:lz4-java:1.8.0:jar" level="project" />
     <orderEntry type="library" name="sbt: org.ow2.asm:asm-analysis:5.0.3:jar" level="project" />
     <orderEntry type="library" name="sbt: org.ow2.asm:asm-commons:5.0.3:jar" level="project" />
     <orderEntry type="library" name="sbt: org.ow2.asm:asm-tree:5.0.3:jar" level="project" />

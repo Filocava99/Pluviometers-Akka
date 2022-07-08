@@ -1,12 +1,11 @@
-package it.filippocavallari
-package actor
+package it.filippocavallari.actor
 
 import Device.DeviceCommand
 import Zone.ZoneCommand
-
 import akka.actor.PreRestartException
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior, PostStop, PreRestart, Signal, SupervisorStrategy}
+import it.filippocavallari.Coordinate
 
 object Device{
     def apply(deviceId: String, coordinate: Coordinate, zone: ActorRef[Command]): Behavior[DeviceCommand] = {
