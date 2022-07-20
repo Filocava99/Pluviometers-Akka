@@ -2,7 +2,9 @@ package it.filippocavallari
 
 import akka.actor.testkit.typed.scaladsl.{ActorTestKit, ScalaTestWithActorTestKit, TestProbe}
 import akka.actor.typed.ActorRef
-import it.filippocavallari.actor._
+import akka.actor.typed.scaladsl.Behaviors
+import it.filippocavallari.actor.*
+import it.filippocavallari.view.GUI
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.{AnyWordSpec, AnyWordSpecLike}
@@ -19,8 +21,15 @@ class SmartCityTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
     val MAX_ZONES = 10
     val N_DEVICES = 10
     val expectedZones: Int = Math.min(MAX_ZONES, N_DEVICES)
-
-    val city: ActorRef[CityCommand] = spawn(City(Size(200, 100), N_DEVICES))
+    val initialPort = 2551
+    var city : ActorRef[City.Command] = _
+    startupWithRole("system", initialPort)(Behaviors.setup(ctx => {
+        val portCounter = startupWithRole("portCounter", initialPort+1)(PortCounter(initialPort+4))
+        city = startupWithRole("city", initialPort + 2)(City(Size(200,100), 20, portCounter))
+        Behaviors.receiveMessage(msg => msg match
+            case "stop" => Behaviors.stopped
+        )}))
+    Thread.sleep(2000)
     val cityProbe: TestProbe[CityCommand] = createTestProbe[CityCommand]()
     city ! GetZones(cityProbe.ref)
     val cityResponse: CityCommand = cityProbe.receiveMessage(FiniteDuration(1, HOURS))
@@ -32,8 +41,8 @@ class SmartCityTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
     val zoneProbe: TestProbe[ZoneCommand] = createTestProbe[ZoneCommand]()
     val firstZone: ActorRef[ZoneCommand] = zones.head
     firstZone ! GetInfo(zoneProbe.ref)
-    var zoneResponse: ZoneCommand = zoneProbe.receiveMessage(FiniteDuration(1, HOURS))
     var devices: Seq[ActorRef[DeviceCommand]] = Seq.empty
+    var zoneResponse: ZoneCommand = zoneProbe.receiveMessage(FiniteDuration(1, HOURS))
     zoneResponse match
         case Zone.GetInfoResponse(zoneId, inAlarm, receivedDevices) =>
             devices = receivedDevices
@@ -53,14 +62,14 @@ class SmartCityTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
                             alarm = alarmStatus
                         case _ => fail("Unexpected response")
                 }
-                alarm should be(AlarmStatus.ALARM_UNDER_MANAGEMENT)
+                alarm should be(AlarmStatus.ALARM_ON)
             }
             "the alarm has not been disabled by the fire station even if the devices are not in alarm" in {
                 devices.foreach(device => device ! Device.DisableAlarm())
                 firstZone ! Zone.GetAlarmStatus(zoneProbe.ref)
                 zoneProbe.receiveMessage(FiniteDuration(1, HOURS)) match
                     case Zone.GetAlarmStatusResponse(alarmStatus) =>
-                        alarmStatus should be(AlarmStatus.ALARM_OFF)
+                        alarmStatus should be(AlarmStatus.ALARM_ON)
                     case _ => fail("Unexpected response")
             }
         }

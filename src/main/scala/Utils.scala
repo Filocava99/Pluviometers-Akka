@@ -31,13 +31,3 @@ def startupWithRole[X](role: String, port: Int)(root: => Behavior[X]): ActorSyst
 
     // Create an Akka system
     ActorSystem(root, "ClusterSystem", config)
-
-object PortCounter{
-    @volatile var port: AtomicInteger = new AtomicInteger(2551)
-
-    def nextPort(): Int = {
-        this.synchronized{
-            port.getAndIncrement()
-        }
-    }
-}

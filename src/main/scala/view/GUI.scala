@@ -2,29 +2,30 @@ package it.filippocavallari.view
 
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior, SpawnProtocol}
 import akka.actor.typed.scaladsl.{AbstractBehavior, ActorContext, Behaviors}
-import it.filippocavallari.actor.{City, FireStation, Zone}
+import it.filippocavallari.actor.{City, FireStation, PortCounter, Zone}
 import it.filippocavallari.actor.City.CityCommand
 import it.filippocavallari.actor.Zone.ZoneCommand
-import it.filippocavallari.view.MainView.ZoneCommandWrapper
+import it.filippocavallari.view.GUI.ZoneCommandWrapper
 import it.filippocavallari.actor.Zone.*
 import it.filippocavallari.actor.Device.DeviceCommand
 import it.filippocavallari.actor.FireStation.FireStationCommand
-import it.filippocavallari.{PortCounter, Size, startupWithRole}
+import it.filippocavallari.{Size, startupWithRole}
 
 import java.awt.event.ActionListener
 import java.awt.{GridLayout, LayoutManager}
 import javax.swing.{BorderFactory, BoxLayout, JButton, JFrame, JLabel, JPanel, WindowConstants}
+import scala.language.postfixOps
 import scala.swing.*
 import scala.swing.event.ActionEvent
 
-object MainView{
+object GUI{
     def apply(city: ActorRef[CityCommand]): Behavior[CityCommand] =
-        Behaviors.setup(context => new MainView(context, city))
+        Behaviors.setup(context => new GUI(context, city))
 
     case class ZoneCommandWrapper(cmd: ZoneCommand) extends CityCommand
 }
 
-class MainView(context: ActorContext[CityCommand], val smartCity: ActorRef[CityCommand]) extends AbstractBehavior[CityCommand](context) {
+class GUI(context: ActorContext[CityCommand], val smartCity: ActorRef[CityCommand]) extends AbstractBehavior[CityCommand](context) {
 
     val view = new View()
 
@@ -102,9 +103,11 @@ class MainView(context: ActorContext[CityCommand], val smartCity: ActorRef[CityC
 }
 
 @main def main(): Unit ={
-    startupWithRole("system", PortCounter.nextPort())(Behaviors.setup(ctx => {
-        val city = startupWithRole("city", PortCounter.nextPort())(City(Size(200,100), 20))
-        startupWithRole("gui",PortCounter.nextPort())(MainView(city))
+    var initialPort = 2551
+    startupWithRole("system", initialPort)(Behaviors.setup(ctx => {
+        val portCounter = startupWithRole("portCounter", initialPort+1)(PortCounter(initialPort+4))
+        val city = startupWithRole("city", initialPort + 2)(City(Size(200,100), 20, portCounter))
+        startupWithRole("gui",initialPort + 3)(GUI(city))
         Behaviors.receiveMessage(msg => msg match
             case "stop" => Behaviors.stopped
         )}))

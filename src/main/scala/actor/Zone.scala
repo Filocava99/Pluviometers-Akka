@@ -6,7 +6,7 @@ import Device.DeviceCommand
 import FireStation.FireStationCommand
 import Zone.{WrappedDeviceCommand, WrappedFireStationCommand, ZoneCommand}
 import akka.actor.Cancellable
-import it.filippocavallari.{Coordinate, PortCounter, Size, startupWithRole}
+import it.filippocavallari.{Coordinate, Size, startupWithRole}
 
 import concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
@@ -15,12 +15,12 @@ import scala.language.postfixOps
 import concurrent.duration.{Duration, FiniteDuration, MILLISECONDS, SECONDS}
 
 object Zone{
-    def apply(zoneId: String, coordinate: Coordinate, size: Size): Behavior[ZoneCommand] = {
-        Behaviors.setup(ctx => new Zone(ctx, zoneId, coordinate, size))
+    def apply(zoneId: String, coordinate: Coordinate, size: Size, fireStationPort: Int): Behavior[ZoneCommand] = {
+        Behaviors.setup(ctx => new Zone(ctx, zoneId, coordinate, size, fireStationPort))
     }
 
     trait Command
-    case class RegisterDevice(deviceId: String) extends Command
+    case class RegisterDevice(deviceId: String, port: Int) extends Command
     case class RegistrationResponse(deviceId: String, success: Boolean)
     case class GetInfo(ref: ActorRef[ZoneCommand]) extends Command
     case class GetInfoResponse(zoneId: String, inAlarm: AlarmStatus, devices: Seq[ActorRef[DeviceCommand]]) extends Command
@@ -39,22 +39,22 @@ object Zone{
     }
 }
 
-class Zone(context: ActorContext[ZoneCommand], val zoneId: String, val coordinate: Coordinate, size: Size) extends AbstractBehavior[ZoneCommand](context){
+class Zone(context: ActorContext[ZoneCommand], val zoneId: String, val coordinate: Coordinate, size: Size, fireStationPort: Int) extends AbstractBehavior[ZoneCommand](context){
 
     val deviceAdapter: ActorRef[Device.DeviceCommand] = context.messageAdapter(WrappedDeviceCommand.apply)
     val fireStationAdapter: ActorRef[FireStation.FireStationCommand] = context.messageAdapter(WrappedFireStationCommand.apply)
 
     val devices: mutable.Map[String, ActorRef[DeviceCommand]] = mutable.Map[String, ActorRef[DeviceCommand]]()
     val alarmedDevices: mutable.Set[String] = scala.collection.mutable.Set[String]()
-    val fireStation: ActorRef[FireStationCommand] = startupWithRole(s"fireStation-${coordinate.x}-${coordinate.y}",PortCounter.nextPort())(FireStation(fireStationAdapter))
+    val fireStation: ActorRef[FireStationCommand] = startupWithRole(s"fireStation-${coordinate.x}-${coordinate.y}",fireStationPort)(FireStation(fireStationAdapter))
     var inAlarm: Zone.AlarmStatus = Zone.AlarmStatus.ALARM_OFF
-
+    
     var cancellableTimer: Option[Cancellable] = None
     def onMessage(msg: ZoneCommand): Behavior[ZoneCommand] = {
         msg match {
-            case Zone.RegisterDevice(deviceId) =>
+            case Zone.RegisterDevice(deviceId, port) =>
                 context.log.info(s"Registering device $deviceId")
-                val deviceRef = startupWithRole(deviceId, PortCounter.nextPort())(Device(deviceId, coordinate, deviceAdapter))
+                val deviceRef = startupWithRole(deviceId, port)(Device(deviceId, coordinate, deviceAdapter))
                 devices.put(deviceId, deviceRef)
                 this
             case Zone.GetInfo(ref) =>
